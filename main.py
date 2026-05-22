@@ -1,7 +1,7 @@
 import os
 import io
+import json
 import zipfile
-import tempfile
 import logging
 import smtplib
 import boto3
@@ -284,9 +284,8 @@ async def stripe_webhook(request: Request):
         if STRIPE_WEBHOOK_SECRET:
             event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
         else:
-            import json
             event = json.loads(payload)
-    except stripe.error.SignatureVerificationError as e:
+    except (stripe.error.SignatureVerificationError, ValueError) as e:
         log.error(f"Webhook signature invalid: {e}")
         raise HTTPException(status_code=400, detail="Invalid signature")
     except Exception as e:
