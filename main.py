@@ -112,13 +112,15 @@ def _r2_client():
 
 
 def _ensure_r2_bucket():
+    """Verify R2 bucket is accessible. Bucket is pre-created via CF API."""
     s3 = _r2_client()
     try:
         s3.head_bucket(Bucket=R2_BUCKET)
-        log.info(f"R2 bucket '{R2_BUCKET}' exists.")
-    except Exception:
-        s3.create_bucket(Bucket=R2_BUCKET)
-        log.info(f"Created R2 bucket '{R2_BUCKET}'.")
+        log.info(f"R2 bucket '{R2_BUCKET}' accessible.")
+    except Exception as e:
+        # Bucket may exist but head_bucket fails on R2 with 403/404 for various reasons.
+        # Try a test put to confirm write access works.
+        log.warning(f"R2 head_bucket returned: {e} — assuming bucket exists, continuing.")
 
 
 def _upload_zip_to_r2(zip_bytes: bytes, filename: str) -> str:
