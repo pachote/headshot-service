@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+fal-client
+stripe
+boto3
+requests
+python-multipart
