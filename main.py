@@ -54,66 +54,29 @@ NICHES = {
     },
 }
 
-# Maps Stripe price_id -> niche key  (filled at startup)
-PRICE_TO_NICHE: dict[str, str] = {}
-# Maps niche key -> stripe price_id  (filled at startup)
-NICHE_TO_PRICE: dict[str, str] = {}
+# Hardcoded Stripe price IDs (pre-created 2026-05-22)
+PRICE_TO_NICHE: dict[str, str] = {
+    "price_1TZv2iIWH9q4fDUwaVK46uBr": "neuro",
+    "price_1TZv2jIWH9q4fDUw5pd5pwQU": "founder",
+    "price_1TZv2jIWH9q4fDUw3E3hYyve": "creator",
+}
+NICHE_TO_PRICE: dict[str, str] = {
+    "neuro":   "price_1TZv2iIWH9q4fDUwaVK46uBr",
+    "founder": "price_1TZv2jIWH9q4fDUw5pd5pwQU",
+    "creator": "price_1TZv2jIWH9q4fDUw3E3hYyve",
+}
 
 
 def _bootstrap_stripe_products():
-    """Create Stripe products + prices if they don't already exist."""
-    existing_products = stripe.Product.list(limit=100).data
-    existing_by_name = {p.name: p for p in existing_products}
-
-    for key, info in NICHES.items():
-        if info["name"] in existing_by_name:
-            product = existing_by_name[info["name"]]
-            log.info(f"Stripe product exists: {info['name']} ({product.id})")
-        else:
-            product = stripe.Product.create(
-                name=info["name"],
-                metadata={"niche": key},
-            )
-            log.info(f"Created Stripe product: {info['name']} ({product.id})")
-
-        # Find or create a $49 price for this product
-        prices = stripe.Price.list(product=product.id, limit=10).data
-        price = next(
-            (p for p in prices if p.unit_amount == info["price_cents"] and p.currency == "usd"),
-            None,
-        )
-        if price is None:
-            price = stripe.Price.create(
-                product=product.id,
-                unit_amount=info["price_cents"],
-                currency="usd",
-            )
-            log.info(f"Created price {price.id} for {key}")
-        else:
-            log.info(f"Reusing price {price.id} for {key}")
-
-        PRICE_TO_NICHE[price.id] = key
-        NICHE_TO_PRICE[key] = price.id
-
-    log.info(f"PRICE_TO_NICHE map: {PRICE_TO_NICHE}")
+    """Prices are pre-created. Just log confirmation."""
+    log.info(f"Stripe price map loaded: {NICHE_TO_PRICE}")
 
 
 def _bootstrap_stripe_webhook():
-    """Register the Railway webhook endpoint in Stripe if not present."""
-    webhook_url = f"{APP_URL}/webhook/stripe"
-    existing = stripe.WebhookEndpoint.list(limit=100).data
-    for wh in existing:
-        if wh.url == webhook_url:
-            secret = wh.secret if hasattr(wh, "secret") else os.environ.get("STRIPE_WEBHOOK_SECRET", "")
-            log.info(f"Webhook already registered: {wh.id}")
-            return secret
-
-    wh = stripe.WebhookEndpoint.create(
-        url=webhook_url,
-        enabled_events=["checkout.session.completed"],
-    )
-    log.info(f"Registered new webhook: {wh.id}  secret={wh.secret}")
-    return wh.secret
+    """Webhook is pre-registered. Return env var secret."""
+    secret = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+    log.info(f"Stripe webhook secret loaded from env: {'yes' if secret else 'MISSING'}")
+    return secret
 
 
 # ---------------------------------------------------------------------------
